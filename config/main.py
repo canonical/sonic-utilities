@@ -1631,19 +1631,23 @@ def del_vlan_member(ctx, vid, interface_name):
         ctx.fail("{} doesn't exist".format(vlan_name))
     members = vlan.get('members', [])
     if interface_name not in members:
-        if get_interface_naming_mode() == "alias":
-            interface_name = interface_name_to_alias(db, interface_name)
-            if interface_name is None:
-                ctx.fail("'interface_name' is None!")
-            ctx.fail("{} is not a member of {}".format(interface_name, vlan_name))
+        vlan_member = db.get_entry('VLAN_MEMBER', (vlan_name, interface_name))
+        if len(vlan_member) == 0:
+            if get_interface_naming_mode() == "alias":
+                interface_name = interface_name_to_alias(db, interface_name)
+                if interface_name is None:
+                    ctx.fail("'interface_name' is None!")
+                ctx.fail("{} is not a member of {}".format(interface_name, vlan_name))
+            else:
+                ctx.fail("{} is not a member of {}".format(interface_name, vlan_name))
+    if interface_name in members:
+        members.remove(interface_name)
+        if len(members) == 0:
+            del vlan['members']
         else:
-            ctx.fail("{} is not a member of {}".format(interface_name, vlan_name))
-    members.remove(interface_name)
-    if len(members) == 0:
-        del vlan['members']
-    else:
-        vlan['members'] = members
-    db.set_entry('VLAN', vlan_name, vlan)
+            vlan['members'] = members
+        db.set_entry('VLAN', vlan_name, vlan)
+
     db.set_entry('VLAN_MEMBER', (vlan_name, interface_name), None)
 
 def mvrf_restart_services():
