@@ -209,6 +209,9 @@ class Portstat(object):
         if counter_port_name_map is None:
             return cnstat_dict, ratestat_dict
         for port in natsorted(counter_port_name_map):
+            if  port[:3] == "CPU" :
+                continue
+
             port_name = port.split(":")[0]
             if self.multi_asic.skip_display(constants.PORT_OBJ, port_name):
                 continue
