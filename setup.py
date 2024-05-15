@@ -151,6 +151,8 @@ setup(
         'scripts/natshow',
         'scripts/nbrshow',
         'scripts/neighbor_advertiser',
+        'scripts/pacshow',
+        'scripts/pacclear',
         'scripts/pcmping',
         'scripts/pg-drop',
         'scripts/port2alias',
