@@ -2,7 +2,7 @@ import os
 import sys
 
 from utils import get_result_and_return_code
-from mmuconfig_input.mmuconfig_test_vectors import show_mmu_config, show_mmu_config_one, test_data 
+from mmuconfig_input.mmuconfig_test_vectors import show_mmu_config, show_mmu_config_one
 from json import load
 
 root_path = os.path.dirname(os.path.abspath(__file__))
