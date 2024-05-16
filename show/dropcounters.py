@@ -52,7 +52,7 @@ def counts(group, counter_type, verbose, namespace):
 
     if counter_type:
         cmd += ['-t', str(counter_type)]
-    
+
     if namespace:
         cmd += ['-n', str(namespace)]
 
