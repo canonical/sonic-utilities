@@ -408,7 +408,8 @@ Examples:
     # Variables
     parser.add_argument('-g', '--group',   type=str, help='The group of the target drop counter', default=None)
     parser.add_argument('-t', '--type',    type=str, help='The type of the target drop counter', default=None)
-    parser.add_argument('-n', '--namespace', type=str, help='Namespace name', default=None)
+    @click.option('-n', '--namespace', help='Namespace name', \
+        required=True if multi_asic.is_multi_asic() else False, type=click.Choice(multi_asic.get_namespace_list()))
 
     args = parser.parse_args()
 
@@ -419,12 +420,6 @@ Examples:
     namespace = args.namespace
 
     load_db_config()
-    namespaces = multi_asic.get_namespace_list()
-    if namespace and namespace not in namespaces:
-        raise Exception("Input arguments error. Namespaces must be one of", *namespaces)
-
-    if multi_asic.is_multi_asic() and not namespace:
-        raise Exception("Input arguments error. Namespace must be specified for multi-asic devices.")
 
     dcstat = DropStat(namespace)
     if command == 'clear':
