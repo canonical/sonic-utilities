@@ -38,8 +38,6 @@ red_drop_probability     5
 
 Profile: AZURE_LOSSY
 -----------------------  -----
-wred_green_enable        true
-wred_yellow_enable       true
 red_max_threshold        32760
 red_min_threshold        4095
 yellow_max_threshold     32760
