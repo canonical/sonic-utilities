@@ -4039,6 +4039,142 @@ def del_user(db, user):
             click.echo("Restart service snmp failed with error {}".format(e))
             raise click.Abort()
 
+
+#
+# 'bmp' group ('config bmp ...')
+#
+@config.group()
+@clicommon.pass_db
+def bmp(db):
+    """BMP-related configuration"""
+
+
+#
+# 'enable' subgroup ('config bmp enable ...')
+#
+@bmp.group()
+@clicommon.pass_db
+def enable(db):
+    """Enable BMP table dump """
+
+
+#
+# 'bgp-neighbor-table' command ('config bmp enable bgp-neighbor-table')
+#
+@enable.command('bgp-neighbor-table')
+@clicommon.pass_db
+def enable_bgp_neighbor_table(db):
+    """enable bgp-neighbor-table sessions
+       In the case of Multi-Asic platform, corresponding database instance of neighbor will be operated.
+    """
+    log.log_info("'bmp enable bgp-neighbor-table' executing...")
+    bmp_table = db.cfgdb.get_table('BMP')
+    if not bmp_table:
+        bmp_table = {'table': {'bgp_neighbor_table': 'true'}}
+    else:
+        bmp_table['table']['bgp_neighbor_table'] = 'true'
+    db.cfgdb.mod_entry('BMP', 'table', bmp_table['table'])
+
+
+#
+# 'bgp-rib-out-table' command ('config bmp enable bgp-rib-out-table')
+#
+@enable.command('bgp-rib-out-table')
+@clicommon.pass_db
+def enable_bgp_rib_out_table(db):
+    """enable bgp-rib-out-table sessions
+       In the case of Multi-Asic platform, corresponding database instance of neighbor will be operated.
+    """
+    log.log_info("'bmp enable bgp-rib-out-table' executing...")
+    bmp_table = db.cfgdb.get_table('BMP')
+    if not bmp_table:
+        bmp_table = {'table': {'bgp_rib_out_table': 'true'}}
+    else:
+        bmp_table['table']['bgp_rib_out_table'] = 'true'
+    db.cfgdb.mod_entry('BMP', 'table', bmp_table['table'])
+
+
+#
+# 'bgp-rib-in-table' command ('config bmp enable bgp-rib-in-table')
+#
+@enable.command('bgp-rib-in-table')
+@clicommon.pass_db
+def enable_bgp_rib_in_table(db):
+    """enable bgp-rib-in-table sessions
+       In the case of Multi-Asic platform, corresponding database instance of neighbor will be operated.
+    """
+    log.log_info("'bmp enable bgp-rib-in-table' executing...")
+    bmp_table = db.cfgdb.get_table('BMP')
+    if not bmp_table:
+        bmp_table = {'table': {'bgp_rib_in_table': 'true'}}
+    else:
+        bmp_table['table']['bgp_rib_in_table'] = 'true'
+    db.cfgdb.mod_entry('BMP', 'table', bmp_table['table'])
+
+
+#
+# 'disable' subgroup ('config bmp disable ...')
+#
+@bmp.group()
+@clicommon.pass_db
+def disable(db):
+    """Disable BMP table dump """
+
+
+#
+# 'bgp-neighbor-table' command ('config bmp disable bgp-neighbor-table')
+#
+@disable.command('bgp-neighbor-table')
+@clicommon.pass_db
+def disable_bgp_neighbor_table(db):
+    """disable bgp-neighbor-table sessions
+       In the case of Multi-Asic platform, corresponding database instance of neighbor will be operated.
+    """
+    log.log_info("'bmp disable bgp-neighbor-table' executing...")
+    bmp_table = db.cfgdb.get_table('BMP')
+    if not bmp_table:
+        bmp_table = {'table': {'bgp_neighbor_table': 'false'}}
+    else:
+        bmp_table['table']['bgp_neighbor_table'] = 'false'
+    db.cfgdb.mod_entry('BMP', 'table', bmp_table['table'])
+
+
+#
+# 'bgp-rib-out-table' command ('config bmp disable bgp-rib-out-table')
+#
+@disable.command('bgp-rib-out-table')
+@clicommon.pass_db
+def diable_bgp_rib_out_table(db):
+    """disable bgp-rib-out-table sessions
+       In the case of Multi-Asic platform, corresponding database instance of neighbor will be operated.
+    """
+    log.log_info("'bmp disable bgp-rib-out-table' executing...")
+    bmp_table = db.cfgdb.get_table('BMP')
+    if not bmp_table:
+        bmp_table = {'table': {'bgp_rib_out_table': 'false'}}
+    else:
+        bmp_table['table']['bgp_rib_out_table'] = 'false'
+    db.cfgdb.mod_entry('BMP', 'table', bmp_table['table'])
+
+
+#
+# 'bgp-rib-in-table' command ('config bmp disable bgp-rib-in-table')
+#
+@disable.command('bgp-rib-in-table')
+@clicommon.pass_db
+def disable_bgp_rib_in_table(db):
+    """disable bgp-rib-in-table sessions
+       In the case of Multi-Asic platform, corresponding database instance of neighbor will be operated.
+    """
+    log.log_info("'bmp disable bgp-rib-in-table' executing...")
+    bmp_table = db.cfgdb.get_table('BMP')
+    if not bmp_table:
+        bmp_table = {'table': {'bgp_rib_in_table': 'false'}}
+    else:
+        bmp_table['table']['bgp_rib_in_table'] = 'false'
+    db.cfgdb.mod_entry('BMP', 'table', bmp_table['table'])
+
+
 #
 # 'bgp' group ('config bgp ...')
 #
