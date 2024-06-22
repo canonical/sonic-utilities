@@ -12,17 +12,15 @@ from utilities_common.bgp import (
 
 
 #
-# BGP helpers ------------------------------------------------------------
+# W-ECMP helpers ---------------------------------------------------------
 #
 
 
 def format_attr_value(entry, attr):
     """ Helper that formats attribute to be presented in the table output.
-
     Args:
         entry (Dict[str, str]): CONFIG DB entry configuration.
         attr (Dict): Attribute metadata.
-
     Returns:
         str: formatted attribute value.
     """
@@ -34,42 +32,49 @@ def format_attr_value(entry, attr):
 
 
 #
-# BGP CLI ----------------------------------------------------------------
+# W-ECMP CLI -------------------------------------------------------------
 #
 
 
 @click.group(
-    name="bgp",
+    name="w-ecmp",
     cls=clicommon.AliasedGroup
 )
-def BGP():
-    """ Show BGP configuration """
+def WECMP():
+    """Show W-ECMP configuration"""
 
     pass
 
-# BGP device-global
+
+#
+# W-ECMP status ----------------------------------------------------------
+#
 
 
-@BGP.command(name="device-global")
-@click.option("-j", "--json", "json_format",
-              help="Display in JSON format",
-              is_flag=True,
-              default=False)
+@WECMP.command(
+    name="status"
+)
+@click.option(
+    "-j", "--json", "json_format",
+    help="Display in JSON format",
+    is_flag=True,
+    default=False
+)
 @clicommon.pass_db
 @click.pass_context
-def DEVICE_GLOBAL(ctx, db, json_format):
-    """ Show BGP device global state """
+def STATUS(ctx, db, json_format):
+    """Show status of w-ecmp"""
 
     body = []
     results = {}
 
     if multi_asic.is_multi_asic():
         masic = True
-        header = ["ASIC ID", "TSA", "W-ECMP"]
+        header = ["ASIC ID", "W-ECMP"]
         namespaces = multi_asic.get_namespace_list()
     else:
         masic = False
-        header = ["TSA", "W-ECMP"]
+        header = ["W-ECMP"]
         namespaces = [multi_asic.DEFAULT_NAMESPACE]
 
     for ns in namespaces:
@@ -84,15 +89,6 @@ def DEVICE_GLOBAL(ctx, db, json_format):
 
         if json_format:
             json_output = {
-                "tsa": to_str(
-                    format_attr_value(
-                        entry,
-                        {
-                            'name': 'tsa_enabled',
-                            'is-leaf-list': False
-                        }
-                    )
-                ),
                 "w-ecmp": to_str(
                     format_attr_value(
                         entry,
@@ -110,15 +106,6 @@ def DEVICE_GLOBAL(ctx, db, json_format):
                 results = json_output
         else:
             row = [
-                to_str(
-                    format_attr_value(
-                        entry,
-                        {
-                            'name': 'tsa_enabled',
-                            'is-leaf-list': False
-                        }
-                    )
-                ),
                 to_str(
                     format_attr_value(
                         entry,
