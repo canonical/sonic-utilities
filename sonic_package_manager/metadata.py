@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 
 import json
+import io
 import tarfile
 from typing import Dict, List, Optional
 from sonic_package_manager import utils
@@ -90,9 +91,41 @@ class MetadataResolver:
                 if labels is None:
                     raise MetadataError('No manifest found in image labels')
             else:
+                return self.from_file(image)
+                """
                 raise MetadataError('No manifest found in image labels')
+                """
 
         return self.from_labels(labels)
+
+    def from_file(self, image: str) -> Metadata:
+        """ Reads manifest image tarball.
+        Args:
+            image_path: Path to image tarball.
+        Returns:
+            Manifest
+        Raises:
+            MetadataError
+        """
+        buf = bytes()
+
+        container = self.docker.client.containers.create(image)
+        try:
+            bits, _ = container.get_archive('manifest.json')
+            for chunk in bits:
+                buf += chunk
+        finally:
+            container.remove(force=True)
+ 
+        with tarfile.open(fileobj=io.BytesIO(buf)) as tar:
+            manifest = json.loads(tar.extractfile('manifest.json').read())
+
+            log.warning(f"manifest file: {manifest}")
+
+            components = []
+            yang_modules = []
+
+        return Metadata(Manifest.marshal(manifest), components, yang_modules)
 
     def from_registry(self,
                       repository: str,
