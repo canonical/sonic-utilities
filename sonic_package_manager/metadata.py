@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 
 import json
+import io
 import tarfile
 from typing import Dict, List, Optional
 from sonic_package_manager import utils
@@ -85,14 +86,49 @@ class MetadataResolver:
 
         labels = self.docker.labels(image)
         if labels is None or len(labels) == 0 or 'com.azure.sonic.manifest' not in labels:
-            if name:
-                labels = Manifest.get_manifest_from_local_file(name)
-                if labels is None:
+            """ read from manifest.json from docker image """
+            meta_file = self.from_file(image)
+
+            if meta_file is None:
+                if name:
+                    labels = Manifest.get_manifest_from_local_file(name)
+                    if labels is None:
+                        raise MetadataError('No manifest found in image labels')
+                else:
                     raise MetadataError('No manifest found in image labels')
             else:
-                raise MetadataError('No manifest found in image labels')
+                return meta_file
 
         return self.from_labels(labels)
+
+    def from_file(self, image: str) -> Metadata:
+        """ Reads manifest image tarball.
+        Args:
+            image_path: Path to image tarball.
+        Returns:
+            Manifest
+        Raises:
+            MetadataError
+        """
+        buf = bytes()
+
+        container = self.docker.client.containers.create(image)
+        try:
+            bits, _ = container.get_archive('manifest.json')
+            for chunk in bits:
+                buf += chunk
+        finally:
+            container.remove(force=True)
+ 
+        with tarfile.open(fileobj=io.BytesIO(buf)) as tar:
+            manifest = json.loads(tar.extractfile('manifest.json').read())
+
+            log.warning(f"manifest file: {manifest}")
+
+            components = []
+            yang_modules = []
+
+        return Metadata(Manifest.marshal(manifest), components, yang_modules)
 
     def from_registry(self,
                       repository: str,

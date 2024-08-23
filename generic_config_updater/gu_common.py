@@ -943,8 +943,7 @@ class PathAddressing:
             #   path: /VLAN/Vlan1000/dhcp_servers
             if len(leaf_list_tokens) == 1:
                 return [leaf_list_name]
-            leaf_list_pattern = "^[^\[]+(?:\[\.='([^']*)'\])?$"
-            leaf_list_regex = re.compile(leaf_list_pattern)
+            leaf_list_regex = re.compile(r"^[^\[]+(?:\[\.='([^']*)'\])?$")
             match = leaf_list_regex.match(token)
             # leaf_list_name = match.group(1)
             leaf_list_value = match.group(1)
@@ -978,17 +977,15 @@ class PathAddressing:
     def _extract_key_dict(self, list_token):
         # Example: VLAN_MEMBER_LIST[name='Vlan1000'][port='Ethernet8']
         # the groups would be ('VLAN_MEMBER'), ("[name='Vlan1000'][port='Ethernet8']")
-        table_keys_pattern = "^([^\[]+)(.*)$"
         text = list_token
-        table_keys_regex = re.compile(table_keys_pattern)
+        table_keys_regex = re.compile(r"^([^\[]+)(.*)$")
         match = table_keys_regex.match(text)
         # list_name = match.group(1)
         all_key_value = match.group(2)
 
         # Example: [name='Vlan1000'][port='Ethernet8']
         # the findall groups would be ('name', 'Vlan1000'), ('port', 'Ethernet8')
-        key_value_pattern = "\[([^=]+)='([^']*)'\]"
-        matches = re.findall(key_value_pattern, all_key_value)
+        matches = re.findall(r"\[([^=]+)='([^']*)'\]", all_key_value)
         key_dict = {}
         for item in matches:
             key = item[0]
