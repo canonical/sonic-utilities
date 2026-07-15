@@ -229,7 +229,7 @@ class DockerApi:
         with tarfile.open(fileobj=io.BytesIO(buf)) as tar:
             for member in tar:
                 if dst_path.endswith('/'):
-                    tar.extract(member, dst_path)
+                    tar.extract(member, dst_path, filter='fully_trusted')
                 else:
                     member.name = dst_path
-                    tar.extract(member, dst_path)
+                    tar.extract(member, dst_path, filter='fully_trusted')
