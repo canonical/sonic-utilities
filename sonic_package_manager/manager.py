@@ -2,8 +2,8 @@
 
 import contextlib
 import functools
+import importlib.util
 import os
-import pkgutil
 import subprocess
 import tempfile
 from inspect import signature
@@ -164,10 +164,10 @@ def get_cli_plugin_directory(command: str) -> str:
         Path to plugins package directory.
     """
 
-    pkg_loader = pkgutil.get_loader(f'{command}.plugins')
-    if pkg_loader is None:
+    spec = importlib.util.find_spec(f'{command}.plugins')
+    if spec is None or spec.origin is None:
         raise PackageManagerError(f'Failed to get plugins path for {command} CLI')
-    plugins_pkg_path = os.path.dirname(pkg_loader.path)
+    plugins_pkg_path = os.path.dirname(spec.origin)
     return plugins_pkg_path
 
 
