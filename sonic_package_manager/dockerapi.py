@@ -226,6 +226,9 @@ class DockerApi:
         finally:
             container.remove(force=True)
 
+        # py3.14 changed the default extract filter to 'data', which strips the leading
+        # '/' from an absolute member.name and nests the file in a bogus dir; pin
+        # 'fully_trusted' to keep the pre-3.14 behavior.
         with tarfile.open(fileobj=io.BytesIO(buf)) as tar:
             for member in tar:
                 if dst_path.endswith('/'):

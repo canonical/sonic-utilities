@@ -164,6 +164,7 @@ def get_cli_plugin_directory(command: str) -> str:
         Path to plugins package directory.
     """
 
+    # py3.14 removed pkgutil.get_loader; resolve the plugins dir via importlib find_spec().origin
     spec = importlib.util.find_spec(f'{command}.plugins')
     if spec is None or spec.origin is None:
         raise PackageManagerError(f'Failed to get plugins path for {command} CLI')

@@ -29,10 +29,8 @@ class UtilHelper(object):
             log.log_debug('importing plugin: {}'.format(module_name))
             try:
                 if "-" in module_name:
-                    # Hyphenated module names (e.g. show.plugins.dhcp-relay) are not
-                    # valid Python identifiers, so importlib.import_module rejects them.
-                    # Load by file path instead. The file lives in the same directory
-                    # as the namespace package, named <last-segment>.py.
+                    # Hyphenated names (e.g. show.plugins.dhcp-relay) aren't valid
+                    # Python identifiers, so import_module rejects them; load by path.
                     import importlib.util as _ilu
                     rel = module_name.rsplit(".", 1)[-1]
                     file_path = os.path.join(os.path.dirname(plugins_namespace.__file__), rel + ".py")
