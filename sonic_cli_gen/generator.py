@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os
-import pkgutil
+import importlib.util
 import jinja2
 
 from sonic_cli_gen.yang_parser import YangParser
@@ -74,10 +74,11 @@ class CliGenerator:
 
 
 def get_cli_plugin_path(command, plugin_name):
-    pkg_loader = pkgutil.get_loader(f'{command}.plugins.auto')
-    if pkg_loader is None:
+    # py3.14 removed pkgutil.get_loader; resolve the plugins dir via importlib find_spec().origin
+    spec = importlib.util.find_spec(f'{command}.plugins.auto')
+    if spec is None or spec.origin is None:
         raise Exception(f'Failed to get plugins path for {command} CLI')
-    plugins_pkg_path = os.path.dirname(pkg_loader.path)
+    plugins_pkg_path = os.path.dirname(spec.origin)
 
     return os.path.join(plugins_pkg_path, plugin_name)
 
