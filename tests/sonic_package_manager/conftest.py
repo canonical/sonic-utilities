@@ -424,9 +424,9 @@ def sonic_fs(fs):
 
 
 @pytest.fixture(autouse=True)
-def patch_pkgutil():
-    with mock.patch('pkgutil.get_loader') as loader:
-        yield loader
+def patch_find_spec():
+    with mock.patch('importlib.util.find_spec') as find_spec:
+        yield find_spec
 
 
 @pytest.fixture
