@@ -28,17 +28,7 @@ class UtilHelper(object):
                 continue
             log.log_debug('importing plugin: {}'.format(module_name))
             try:
-                if "-" in module_name:
-                    # Hyphenated names (e.g. show.plugins.dhcp-relay) aren't valid
-                    # Python identifiers, so import_module rejects them; load by path.
-                    import importlib.util as _ilu
-                    rel = module_name.rsplit(".", 1)[-1]
-                    file_path = os.path.join(os.path.dirname(plugins_namespace.__file__), rel + ".py")
-                    _spec = _ilu.spec_from_file_location(module_name, file_path)
-                    module = _ilu.module_from_spec(_spec)
-                    _spec.loader.exec_module(module)
-                else:
-                    module = importlib.import_module(module_name)
+                module = importlib.import_module(module_name)
 
             except ModuleNotFoundError as err:
                 log.log_warning('failed to import plugin {}: {}'.format(module_name, err),
