@@ -31,6 +31,23 @@ log.set_min_log_priority_info()
 # Syslog helpers ------------------------------------------------------------------------------------------------------
 #
 
+CONTAINERCFGD_PEBBLE_LAYER = '/var/lib/pebble/default/layers/099-containercfgd.yaml'
+
+
+def get_containercfgd_status(feature_name):
+    """Return (uses_pebble, enabled) for the containercfgd program of a feature container"""
+    output, rc = clicommon.run_command(
+        ['docker', 'exec', '-i', feature_name, 'supervisorctl', 'status', 'containercfgd'],
+        ignore_error=True, return_cmd=True)
+    if rc != clicommon.DOCKER_EXEC_COMMAND_NOT_FOUND:
+        return False, 'no such process' not in output
+
+    # Rock containers run pebble: the feature is enabled while its layer is installed
+    _, rc = clicommon.run_command(['docker', 'exec', '-i', feature_name, 'test', '-f', CONTAINERCFGD_PEBBLE_LAYER],
+                                  ignore_error=True, return_cmd=True)
+    return True, rc == 0
+
+
 def exec_cmd(cmd):
     """ Execute shell command """
     return subprocess.check_output(cmd, stderr=subprocess.STDOUT)
@@ -578,18 +595,27 @@ def enable_rate_limit_feature(db, service_name, namespace):
             click.echo(f'{feature_name} is not running, ignoring...')
             continue
         
-        output, _ = clicommon.run_command(['docker', 'exec', '-i', feature_name, 'supervisorctl', 'status', 'containercfgd'], 
-                                          ignore_error=True, return_cmd=True)
-        if 'no such process' not in output:
+        uses_pebble, enabled = get_containercfgd_status(feature_name)
+        if enabled:
             click.echo(f'Syslog rate limit feature is already enabled in {feature_name}, ignoring...')
             continue
         
-        commands = [
-            ['docker', 'cp', '/usr/share/sonic/templates/containercfgd.conf', f'{feature_name}:/etc/supervisor/conf.d/'],
-            ['docker', 'exec', '-i', feature_name, 'supervisorctl', 'reread'],
-            ['docker', 'exec', '-i', feature_name, 'supervisorctl', 'update'],
-            ['docker', 'exec', '-i', feature_name, 'supervisorctl', 'start', 'containercfgd']
-        ]
+        if uses_pebble:
+            commands = [
+                ['docker', 'cp', '/usr/share/sonic/templates/containercfgd-layer.yaml',
+                 f'{feature_name}:{CONTAINERCFGD_PEBBLE_LAYER}'],
+                ['docker', 'exec', '-i', feature_name, 'pebble', 'add', '--combine', 'containercfgd',
+                 CONTAINERCFGD_PEBBLE_LAYER],
+                ['docker', 'exec', '-i', feature_name, 'pebble', 'start', 'containercfgd']
+            ]
+        else:
+            commands = [
+                ['docker', 'cp', '/usr/share/sonic/templates/containercfgd.conf',
+                 f'{feature_name}:/etc/supervisor/conf.d/'],
+                ['docker', 'exec', '-i', feature_name, 'supervisorctl', 'reread'],
+                ['docker', 'exec', '-i', feature_name, 'supervisorctl', 'update'],
+                ['docker', 'exec', '-i', feature_name, 'supervisorctl', 'start', 'containercfgd']
+            ]
         
         failed = False
         for command in commands:
@@ -620,18 +646,23 @@ def disable_rate_limit_feature(db, service_name, namespace):
             click.echo(f'{feature_name} is not running, ignoring...')
             continue
         
-        output, _ = clicommon.run_command(['docker', 'exec', '-i', feature_name, 'supervisorctl', 'status', 'containercfgd'], 
-                                          ignore_error=True, return_cmd=True)
-        if 'no such process' in output:
+        uses_pebble, enabled = get_containercfgd_status(feature_name)
+        if not enabled:
             click.echo(f'Syslog rate limit feature is already disabled in {feature_name}, ignoring...')
             continue
         
-        commands = [
-            ['docker', 'exec', '-i', feature_name, 'supervisorctl', 'stop', 'containercfgd'],
-            ['docker', 'exec', '-i', feature_name, 'rm', '-f', '/etc/supervisor/conf.d/containercfgd.conf'],
-            ['docker', 'exec', '-i', feature_name, 'supervisorctl', 'reread'],
-            ['docker', 'exec', '-i', feature_name, 'supervisorctl', 'update']
-        ]
+        if uses_pebble:
+            commands = [
+                ['docker', 'exec', '-i', feature_name, 'pebble', 'stop', 'containercfgd'],
+                ['docker', 'exec', '-i', feature_name, 'rm', '-f', CONTAINERCFGD_PEBBLE_LAYER]
+            ]
+        else:
+            commands = [
+                ['docker', 'exec', '-i', feature_name, 'supervisorctl', 'stop', 'containercfgd'],
+                ['docker', 'exec', '-i', feature_name, 'rm', '-f', '/etc/supervisor/conf.d/containercfgd.conf'],
+                ['docker', 'exec', '-i', feature_name, 'supervisorctl', 'reread'],
+                ['docker', 'exec', '-i', feature_name, 'supervisorctl', 'update']
+            ]
         failed = False
         for command in commands:
             output, ret = clicommon.run_command(command, return_cmd=True)
@@ -694,5 +725,9 @@ def level(db, identifier, level, container, program, pid, namespace):
     else:
         command = ['kill', '-s', 'SIGHUP', pid]
     output, ret = clicommon.run_command(command, return_cmd=True)
+    if container and program and ret == clicommon.DOCKER_EXEC_COMMAND_NOT_FOUND:
+        # Rock containers run pebble instead of supervisord
+        command = ['docker', 'exec', '-i', container, 'pebble', 'signal', 'HUP', program]
+        output, ret = clicommon.run_command(command, return_cmd=True)
     if ret != 0:
         raise click.ClickException(f'Failed: {output}')

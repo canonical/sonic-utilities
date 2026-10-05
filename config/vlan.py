@@ -269,6 +269,11 @@ def del_vlan(ctx, vid, multiple, no_restart_dhcp_relay):
             clicommon.run_command(
                 docker_exec_cmd + ['rm', '-f', '/etc/supervisor/conf.d/ndppd.conf'], ignore_error=True, return_cmd=True)
             clicommon.run_command(docker_exec_cmd + ['supervisorctl', 'update'], return_cmd=True)
+        elif (rc == clicommon.DOCKER_EXEC_COMMAND_NOT_FOUND and
+              clicommon.get_pebble_service_state('swss', 'ndppd') == 'active'):
+            # Rock containers run pebble; its swss layer defines ndppd again only if VLANs exist at start
+            click.echo("No VLANs remaining, stopping ndppd service")
+            clicommon.run_command(docker_exec_cmd + ['pebble', 'stop', 'ndppd'], ignore_error=True, return_cmd=True)
 
 
 def restart_ndppd():
@@ -289,7 +294,13 @@ def restart_ndppd():
 
     _, rc = clicommon.run_command(docker_exec_cmd + ndppd_status_cmd, ignore_error=True, return_cmd=True)
 
-    if rc != 0:
+    if rc == clicommon.DOCKER_EXEC_COMMAND_NOT_FOUND:
+        # Rock containers run pebble; its swss layer defines ndppd only if VLANs existed at start
+        if clicommon.get_pebble_service_state('swss', 'ndppd') is None:
+            clicommon.run_command(docker_exec_cmd + ['pebble', 'add', '--combine', 'ndppd',
+                                                     '/usr/share/sonic/templates/ndppd-layer.yaml'])
+        ndppd_restart_cmd = ['pebble', 'restart', 'ndppd']
+    elif rc != 0:
         clicommon.run_command(docker_exec_cmd + ndppd_conf_copy_cmd)
         clicommon.run_command(docker_exec_cmd + supervisor_update_cmd, return_cmd=True)
 

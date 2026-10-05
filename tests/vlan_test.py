@@ -997,6 +997,37 @@ class TestVlan(object):
             ])
             assert result.exit_code == 0
 
+    def test_config_vlan_del_last_vlan_pebble(self):
+        runner = CliRunner()
+        db = Db()
+        db.cfgdb.delete_table("VLAN_MEMBER")
+        db.cfgdb.delete_table("VLAN_INTERFACE")
+        db.cfgdb.set_entry("VLAN", "Vlan2000", None)
+        db.cfgdb.set_entry("VLAN", "Vlan3000", None)
+        db.cfgdb.set_entry("VLAN", "Vlan4000", None)
+
+        # Rock swss container: no supervisorctl, ndppd is a running pebble service
+        def run_command(command, **kwargs):
+            if 'supervisorctl' in command:
+                return "", 127
+            if 'services' in command:
+                return ("Service  Startup   Current  Since               Notes\n"
+                        "ndppd    disabled  active   today at 10:40 UTC  -\n", 0)
+            return "", 0
+        with mock.patch("utilities_common.cli.run_command", mock.Mock(side_effect=run_command)) as mock_run_command:
+            result = runner.invoke(config.config.commands["vlan"].commands["del"], ["1000"], obj=db)
+            print(result.exit_code)
+            print(result.output)
+            mock_run_command.assert_has_calls([
+                mock.call(['docker', 'exec', '-i', 'swss', 'supervisorctl', 'status', 'ndppd'],
+                          ignore_error=True, return_cmd=True),
+                mock.call(['docker', 'exec', '-i', 'swss', 'pebble', 'services', 'ndppd'], return_cmd=True),
+                mock.call(['docker', 'exec', '-i', 'swss', 'pebble', 'stop', 'ndppd'],
+                          ignore_error=True, return_cmd=True)
+            ])
+            assert result.exit_code == 0
+            assert "stopping ndppd service" in result.output
+
     def test_config_vlan_del_nonexist_vlan_member(self):
         runner = CliRunner()
 
@@ -1513,6 +1544,34 @@ class TestVlan(object):
                               mock.call(['docker', 'exec', '-i', 'swss', 'sonic-cfggen', '-d', '-t',
                                          '/usr/share/sonic/templates/ndppd.conf.j2,/etc/ndppd.conf']),
                               mock.call(['docker', 'exec', '-i', 'swss', 'supervisorctl', 'restart', 'ndppd'],
+                                        return_cmd=True)]
+            mock_run_command.assert_has_calls(expected_calls)
+
+            assert result.exit_code == 0
+            assert db.cfgdb.get_entry("VLAN_INTERFACE", "Vlan1000") == {"proxy_arp": "enabled"}
+
+    def test_config_vlan_proxy_arp_enable_pebble(self):
+        # Rock swss container: no supervisorctl, and no ndppd service as no VLAN existed at start
+        mock_cli_returns = [("running", 0), ("", 127), ("No matching services.\n", 0)] + [("", 0)] * 3
+        with mock.patch(
+                "utilities_common.cli.run_command", mock.Mock(side_effect=mock_cli_returns)) as mock_run_command:
+            runner = CliRunner()
+            db = Db()
+
+            result = runner.invoke(config.config.commands["vlan"].commands["proxy_arp"], ["1000", "enabled"], obj=db)
+
+            print(result.exit_code)
+            print(result.output)
+
+            expected_calls = [mock.call(['docker', 'exec', '-i', 'swss', 'supervisorctl', 'status', 'ndppd'],
+                                        ignore_error=True, return_cmd=True),
+                              mock.call(['docker', 'exec', '-i', 'swss', 'pebble', 'services', 'ndppd'],
+                                        return_cmd=True),
+                              mock.call(['docker', 'exec', '-i', 'swss', 'pebble', 'add', '--combine', 'ndppd',
+                                         '/usr/share/sonic/templates/ndppd-layer.yaml']),
+                              mock.call(['docker', 'exec', '-i', 'swss', 'sonic-cfggen', '-d', '-t',
+                                         '/usr/share/sonic/templates/ndppd.conf.j2,/etc/ndppd.conf']),
+                              mock.call(['docker', 'exec', '-i', 'swss', 'pebble', 'restart', 'ndppd'],
                                         return_cmd=True)]
             mock_run_command.assert_has_calls(expected_calls)
 

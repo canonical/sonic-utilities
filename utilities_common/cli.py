@@ -742,6 +742,20 @@ def run_command_in_alias_mode(command, shell=False):
         sys.exit(rc)
 
 
+# Exit code of `docker exec` when the command is missing, e.g. supervisorctl in a rock container, which runs pebble
+DOCKER_EXEC_COMMAND_NOT_FOUND = 127
+
+
+def get_pebble_service_state(container, service):
+    """Return the current state pebble reports for service in container, or None if pebble has no such service"""
+    output, _ = run_command(['docker', 'exec', '-i', container, 'pebble', 'services', service], return_cmd=True)
+    for line in output.splitlines()[1:]:
+        fields = line.split()
+        if len(fields) > 2 and fields[0] == service:
+            return fields[2]
+    return None
+
+
 def run_command(command, display_cmd=False, ignore_error=False, return_cmd=False, interactive_mode=False, shell=False):
     """
     Run bash command. Default behavior is to print output to stdout. If the command returns a non-zero

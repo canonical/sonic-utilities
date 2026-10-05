@@ -482,6 +482,101 @@ class TestSyslog:
         )
         assert result.exit_code == SUCCESS
 
+    @staticmethod
+    def pebble_container_run_command(layer_installed):
+        """Mock run_command for a running rock container, which has no supervisorctl"""
+        def run_command(command, **kwargs):
+            if 'docker ps' in command:
+                return 'bgp', 0
+            if 'supervisorctl' in command:
+                return '', 127
+            if command[-2:] == ['-f', config_syslog.CONTAINERCFGD_PEBBLE_LAYER]:
+                return '', 0 if layer_installed else 1
+            return '', 0
+        return run_command
+
+    @mock.patch('config.syslog.clicommon.run_command')
+    def test_enable_syslog_rate_limit_feature_pebble(self, mock_run):
+        db = Db()
+        db.cfgdb.set_entry(FEATURE_TABLE, 'bgp', {SUPPORT_RATE_LIMIT: 'true',
+                                                  'state': 'enabled'})
+        runner = CliRunner()
+        layer = config_syslog.CONTAINERCFGD_PEBBLE_LAYER
+
+        mock_run.side_effect = self.pebble_container_run_command(layer_installed=False)
+        result = runner.invoke(
+            config.config.commands["syslog"].commands["rate-limit-feature"].commands["enable"], obj=db
+        )
+        assert result.exit_code == SUCCESS
+        assert 'Enabled syslog rate limit feature for bgp' in result.output
+        mock_run.assert_has_calls([
+            mock.call(['docker', 'cp', '/usr/share/sonic/templates/containercfgd-layer.yaml', f'bgp:{layer}'],
+                      return_cmd=True),
+            mock.call(['docker', 'exec', '-i', 'bgp', 'pebble', 'add', '--combine', 'containercfgd', layer],
+                      return_cmd=True),
+            mock.call(['docker', 'exec', '-i', 'bgp', 'pebble', 'start', 'containercfgd'], return_cmd=True)
+        ])
+
+        mock_run.reset_mock()
+        mock_run.side_effect = self.pebble_container_run_command(layer_installed=True)
+        result = runner.invoke(
+            config.config.commands["syslog"].commands["rate-limit-feature"].commands["enable"], obj=db
+        )
+        assert result.exit_code == SUCCESS
+        assert 'already enabled' in result.output
+        assert not any('pebble' in c.args[0] for c in mock_run.call_args_list)
+
+    @mock.patch('config.syslog.clicommon.run_command')
+    def test_disable_syslog_rate_limit_feature_pebble(self, mock_run):
+        db = Db()
+        db.cfgdb.set_entry(FEATURE_TABLE, 'bgp', {SUPPORT_RATE_LIMIT: 'true',
+                                                  'state': 'enabled'})
+        runner = CliRunner()
+        layer = config_syslog.CONTAINERCFGD_PEBBLE_LAYER
+
+        mock_run.side_effect = self.pebble_container_run_command(layer_installed=True)
+        result = runner.invoke(
+            config.config.commands["syslog"].commands["rate-limit-feature"].commands["disable"], obj=db
+        )
+        assert result.exit_code == SUCCESS
+        assert 'Disabled syslog rate limit feature for bgp' in result.output
+        mock_run.assert_has_calls([
+            mock.call(['docker', 'exec', '-i', 'bgp', 'pebble', 'stop', 'containercfgd'], return_cmd=True),
+            mock.call(['docker', 'exec', '-i', 'bgp', 'rm', '-f', layer], return_cmd=True)
+        ])
+
+        mock_run.reset_mock()
+        mock_run.side_effect = self.pebble_container_run_command(layer_installed=False)
+        result = runner.invoke(
+            config.config.commands["syslog"].commands["rate-limit-feature"].commands["disable"], obj=db
+        )
+        assert result.exit_code == SUCCESS
+        assert 'already disabled' in result.output
+
+    @mock.patch('config.syslog.clicommon.run_command')
+    def test_config_log_level_pebble(self, mock_run):
+        db = Db()
+        db.cfgdb.set_entry('LOGGER', 'log1', {'require_manual_refresh': 'true'})
+        runner = CliRunner()
+
+        mock_run.side_effect = [('', 127), ('', 0)]
+        result = runner.invoke(
+            config.config.commands["syslog"].commands["level"],
+            ['-i', 'log1', '-l', 'DEBUG', '--container', 'pmon', '--program', 'xcvrd'], obj=db
+        )
+        assert result.exit_code == SUCCESS
+        mock_run.assert_has_calls([
+            mock.call(['docker', 'exec', '-i', 'pmon', 'supervisorctl', 'signal', 'HUP', 'xcvrd'], return_cmd=True),
+            mock.call(['docker', 'exec', '-i', 'pmon', 'pebble', 'signal', 'HUP', 'xcvrd'], return_cmd=True)
+        ])
+
+        mock_run.side_effect = [('', 127), ('error: service is not running', 1)]
+        result = runner.invoke(
+            config.config.commands["syslog"].commands["level"],
+            ['-i', 'log1', '-l', 'DEBUG', '--container', 'pmon', '--program', 'xcvrd'], obj=db
+        )
+        assert result.exit_code != SUCCESS
+
     @mock.patch('config.syslog.clicommon.run_command')
     def test_config_log_level(self, mock_run):
         db = Db()
