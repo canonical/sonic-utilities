@@ -1011,8 +1011,8 @@ class TestVlan(object):
             if 'supervisorctl' in command:
                 return "", 127
             if 'services' in command:
-                return ("Service  Startup   Current  Since               Notes\n"
-                        "ndppd    disabled  active   today at 10:40 UTC  -\n", 0)
+                return ('{"services":{"ndppd":{"name":"ndppd","startup":"disabled","current":"active",'
+                        '"current-since":"2026-10-06T10:40:00Z"}}}', 0)
             return "", 0
         with mock.patch("utilities_common.cli.run_command", mock.Mock(side_effect=run_command)) as mock_run_command:
             result = runner.invoke(config.config.commands["vlan"].commands["del"], ["1000"], obj=db)
@@ -1021,7 +1021,8 @@ class TestVlan(object):
             mock_run_command.assert_has_calls([
                 mock.call(['docker', 'exec', '-i', 'swss', 'supervisorctl', 'status', 'ndppd'],
                           ignore_error=True, return_cmd=True),
-                mock.call(['docker', 'exec', '-i', 'swss', 'pebble', 'services', 'ndppd'], return_cmd=True),
+                mock.call(['docker', 'exec', '-i', 'swss', 'pebble', 'services', '--format', 'json', 'ndppd'],
+                          return_cmd=True),
                 mock.call(['docker', 'exec', '-i', 'swss', 'pebble', 'stop', 'ndppd'],
                           ignore_error=True, return_cmd=True)
             ])
@@ -1552,7 +1553,7 @@ class TestVlan(object):
 
     def test_config_vlan_proxy_arp_enable_pebble(self):
         # Rock swss container: no supervisorctl, and no ndppd service as no VLAN existed at start
-        mock_cli_returns = [("running", 0), ("", 127), ("No matching services.\n", 0)] + [("", 0)] * 3
+        mock_cli_returns = [("running", 0), ("", 127), ('{"services":{}}', 0)] + [("", 0)] * 3
         with mock.patch(
                 "utilities_common.cli.run_command", mock.Mock(side_effect=mock_cli_returns)) as mock_run_command:
             runner = CliRunner()
@@ -1565,8 +1566,8 @@ class TestVlan(object):
 
             expected_calls = [mock.call(['docker', 'exec', '-i', 'swss', 'supervisorctl', 'status', 'ndppd'],
                                         ignore_error=True, return_cmd=True),
-                              mock.call(['docker', 'exec', '-i', 'swss', 'pebble', 'services', 'ndppd'],
-                                        return_cmd=True),
+                              mock.call(['docker', 'exec', '-i', 'swss', 'pebble', 'services', '--format', 'json',
+                                         'ndppd'], return_cmd=True),
                               mock.call(['docker', 'exec', '-i', 'swss', 'pebble', 'add', '--combine', 'ndppd',
                                          '/usr/share/sonic/templates/ndppd-layer.yaml']),
                               mock.call(['docker', 'exec', '-i', 'swss', 'sonic-cfggen', '-d', '-t',

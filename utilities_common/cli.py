@@ -748,12 +748,12 @@ DOCKER_EXEC_COMMAND_NOT_FOUND = 127
 
 def get_pebble_service_state(container, service):
     """Return the current state pebble reports for service in container, or None if pebble has no such service"""
-    output, _ = run_command(['docker', 'exec', '-i', container, 'pebble', 'services', service], return_cmd=True)
-    for line in output.splitlines()[1:]:
-        fields = line.split()
-        if len(fields) > 2 and fields[0] == service:
-            return fields[2]
-    return None
+    output, _ = run_command(['docker', 'exec', '-i', container, 'pebble', 'services', '--format', 'json', service],
+                            return_cmd=True)
+    try:
+        return json.loads(output)['services'][service]['current']
+    except (ValueError, KeyError, TypeError):
+        return None
 
 
 def run_command(command, display_cmd=False, ignore_error=False, return_cmd=False, interactive_mode=False, shell=False):
