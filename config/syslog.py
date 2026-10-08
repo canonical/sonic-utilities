@@ -32,6 +32,7 @@ log.set_min_log_priority_info()
 #
 
 CONTAINERCFGD_PEBBLE_LAYER = '/var/lib/pebble/default/layers/099-containercfgd.yaml'
+CONTAINERCFGD_PEBBLE_DISABLE_LAYER = '/tmp/containercfgd-disable-layer.yaml'
 
 
 def get_containercfgd_status(feature_name):
@@ -42,10 +43,8 @@ def get_containercfgd_status(feature_name):
     if rc != clicommon.DOCKER_EXEC_COMMAND_NOT_FOUND:
         return False, 'no such process' not in output
 
-    # Rock containers run pebble: the feature is enabled while its layer is installed
-    _, rc = clicommon.run_command(['docker', 'exec', '-i', feature_name, 'test', '-f', CONTAINERCFGD_PEBBLE_LAYER],
-                                  ignore_error=True, return_cmd=True)
-    return True, rc == 0
+    # Rock containers run pebble, which cannot remove a service: disable leaves it defined with startup disabled
+    return True, clicommon.get_pebble_service_state(feature_name, 'containercfgd', 'startup') == 'enabled'
 
 
 def exec_cmd(cmd):
@@ -654,7 +653,12 @@ def disable_rate_limit_feature(db, service_name, namespace):
         if uses_pebble:
             commands = [
                 ['docker', 'exec', '-i', feature_name, 'pebble', 'stop', 'containercfgd'],
-                ['docker', 'exec', '-i', feature_name, 'rm', '-f', CONTAINERCFGD_PEBBLE_LAYER]
+                ['docker', 'cp', '/usr/share/sonic/templates/containercfgd-disable-layer.yaml',
+                 f'{feature_name}:{CONTAINERCFGD_PEBBLE_DISABLE_LAYER}'],
+                ['docker', 'exec', '-i', feature_name, 'pebble', 'add', '--combine', 'containercfgd',
+                 CONTAINERCFGD_PEBBLE_DISABLE_LAYER],
+                ['docker', 'exec', '-i', feature_name, 'rm', '-f', CONTAINERCFGD_PEBBLE_LAYER,
+                 CONTAINERCFGD_PEBBLE_DISABLE_LAYER]
             ]
         else:
             commands = [
