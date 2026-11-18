@@ -227,7 +227,8 @@ def side_effect_subprocess_popen(*args, **kwargs):
 @patch('sonic_py_common.device_info.get_sonic_version_info', MagicMock(return_value={
         "build_version": "release-1.1-7d94c0c28",
         "sonic_os_version": "11",
-        "debian_version": "11.6",
+        "debian_version": "forky/sid",
+        "distribution": "Ubuntu 26.04",
         "kernel_version": "5.10",
         "commit_id": "7d94c0c28",
         "build_date": "Wed Feb 15 06:17:08 UTC 2023",
@@ -249,7 +250,7 @@ def test_show_version():
     assert result.exit_code == 0
     assert "SONiC Software Version: SONiC.release-1.1-7d94c0c28" in result.output
     assert "SONiC OS Version: 11" in result.output
-    assert "Distribution: Debian 11.6" in result.output
+    assert "Distribution: Ubuntu 26.04" in result.output
     assert "Kernel: 5.10" in result.output
     assert "Build commit: 7d94c0c28" in result.output
     assert "Build date: Wed Feb 15 06:17:08 UTC 2023" in result.output
@@ -321,9 +322,10 @@ def test_show_version_missing_fields():
     runner = CliRunner()
     result = runner.invoke(show.cli.commands["version"])
     assert result.exit_code == 0, "show version crashed: {}".format(result.output)
-    assert "Distribution: Debian N/A" in result.output
+    assert "Distribution: N/A" in result.output
     assert "Kernel:" in result.output
     assert "Build commit: 46415d112" in result.output
+
 
 
 @patch('sonic_py_common.device_info.get_sonic_version_info', MagicMock(return_value={

@@ -1726,7 +1726,7 @@ def version(brief):
 
     click.echo("\nSONiC Software Version: SONiC.{}".format(version_info.get('build_version', 'N/A')))
     click.echo("SONiC OS Version: {}".format(version_info.get('sonic_os_version', 'N/A')))
-    click.echo("Distribution: Debian {}".format(version_info.get('debian_version', 'N/A')))
+    click.echo("Distribution: {}".format(version_info.get('distribution', 'N/A')))
     click.echo("Kernel: {}".format(version_info.get('kernel_version', os.uname().release)))
     click.echo("Build commit: {}".format(version_info['commit_id']))
     click.echo("Build date: {}".format(version_info['build_date']))
